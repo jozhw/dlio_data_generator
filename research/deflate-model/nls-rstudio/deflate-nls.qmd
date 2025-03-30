@@ -1,0 +1,114 @@
+---
+title: "Determination of Deflate NLS of Compression Ratio 3+"
+format: html
+---
+
+# libraries
+
+## install libraries
+
+```{r}
+
+install.packages("git2r", repos = "https://cran.rstudio.com/")
+
+
+```
+
+## load libraries
+
+```{r}
+library(jsonlite)
+library(ggplot2)
+library(dplyr)
+library(plotly)
+
+# setting working dir
+library(git2r)
+
+```
+
+# prep
+
+```{r}
+
+# finding the root dir of the repo
+repo = repository()
+git_root = workdir(repo)
+# set root dir as the working dir
+setwd(git_root)
+
+# get data
+dat = read.csv("./data/calibration/inputs/20240928T014700--npz-calibration.csv")
+
+# filter data
+dat = dat |> filter(compression_ratio > 3)
+compression_ratio = dat$compression_ratio
+entropy = dat$entropy
+
+
+```
+
+# Train Model
+```{r}
+
+nls_custom_model = nls(entropy ~ a / (compression_ratio + b) + c * log(compression_ratio) + d * compression_ratio^2, data = dat, start = list(a = 1, b = 1, c = 0, d = 0))
+
+
+```
+
+# Test Predictions
+
+```{r}
+dat$predicted = predict(nls_custom_model, newdata = dat)
+dat$residual = dat$entropy - dat$predicted
+
+summary(nls_custom_model)
+
+```
+
+# Plots
+
+```{r}
+ggplot(dat, aes(x = compression_ratio, y = entropy)) +
+  geom_point(color = 'blue', alpha = 0.5) +
+  geom_line(aes(y = predicted), color = 'red', linewidth = 1) +
+  labs(title = "Fit of Compression Ratio vs. Entropy",
+       x = "Compression Ratio",
+       y = "Entropy") + 
+  theme_minimal()
+
+
+```
+
+# MSE
+
+## Global MSE
+
+```{r}
+mse_global = mean(dat$residual^2)
+cat("Global MSE: ", mse_global, "\n")
+
+```
+
+## Section MSE
+```{r}
+# bin the data
+dat$bin = cut(dat$compression_ratio, breaks = seq(min(dat$compression_ratio), max(dat$compression_ratio), length.out = 10))
+
+mse_bin = aggregate(residual ~ bin, data = dat, FUN = mean)
+mse_bin$index = seq(1, nrow(mse_bin), 1)
+
+colnames(mse_bin) = c("bin", "mse", "index")
+
+ggplot(mse_bin, aes(x = bin, y = mse)) +
+  geom_point(color = 'blue', alpha = 0.5) +
+  geom_line(color = "blue", group = 1) +
+  geom_hline(yintercept = 0, color = "black", linetype = "dashed") + 
+  labs(x = "Compression Ratio Ranges", y = "MSE", title = "MSE Across Predictors by Compression Ratio Range")
+  
+
+
+
+
+
+```
