@@ -119,8 +119,6 @@ class DataGenerator:
             # get number of images to be processed
             num_rows = self.num_files
 
-            raw_filename = "{}-processed-synthetic-images-results".format(num_rows)
-
             if self.analysis_save_dir is None:
                 raise ValueError("Analysis save directory cannot be None")
             if self.analysis_fname is None:
