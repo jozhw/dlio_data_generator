@@ -49,17 +49,19 @@ class DataGenerator:
             deflate.inverse_path, deflate.nls_path
         )
 
-    def _validations(self):
+    def _validations(self) -> int:
         Validations.validate_compression_types(
             DataGenerator.ACCEPTED_COMPRESSION_TYPES, [self.compression_type]
         )
 
-    def _load_data(self):
+        return 0
+
+    def _load_data(self) -> pd.DataFrame:
         df = pd.read_csv(self.data_path)
 
         return df
 
-    def _analyze_deflate(self):
+    def _analyze_deflate(self) -> int:
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
@@ -137,7 +139,9 @@ class DataGenerator:
 
             Saving.save_to_csv(flat_results, filepath)
 
-    def _generate_deflate(self):
+        return 0
+
+    def _generate_deflate(self) -> int:
         comm = MPI.COMM_WORLD
         rank = comm.Get_rank()
         size = comm.Get_size()
@@ -180,7 +184,9 @@ class DataGenerator:
                 sfile_name, synthetic_image, ["npz"], self.save_path, remove=False
             )
 
-    def _run_deflate(self):
+        return 0
+
+    def _run_deflate(self) -> int:
         """
         Run the deflate compression depending on whether or not want analysis
         """
@@ -189,6 +195,8 @@ class DataGenerator:
             self._analyze_deflate()
         else:
             self._generate_deflate()
+
+        return 0
 
     def run(self):
 
