@@ -1,0 +1,11 @@
+{
+  "data_path": "./data/processed/inputs/20240605T052200--imagenet-rand-300000-processed__jpg_npz.csv",
+  "num_files": 10,
+  "compression_type": "npz",
+  "save_path": "./outputs/imagenet-deflate/",
+  "analyze": {
+    "analyze": false,
+    "analysis_save_dir": null,
+    "analysis_fname": null
+  }
+}
