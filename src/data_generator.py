@@ -24,23 +24,25 @@ class DataGenerator:
     def __init__(
         self,
         data_path: str,
-        num_files: int,
+        num_files: Union[str, None, int],
         compression_type: str,
         save_path: Path,
-        analyze: bool = False,
-        analysis_save_dir: Union[None, Path] = None,
-        analysis_fname: Union[None, str] = None,
+        analyze: Dict,
     ):
 
         # whether or not to run the analysis or not
-        self.analyze: bool = analyze
-        self.analysis_save_dir = analysis_save_dir
-        self.analysis_fname = analysis_fname
+
+        self.analyze: bool = analyze["analyze"]
+        self.analysis_save_dir: Union[None, Path] = analyze["analysis_save_dir"]
+        self.analysis_fname: Union[None, str] = analyze["analysis_fname"]
 
         self.cr_name = "{}_compression_ratio".format(compression_type)
 
         self.data_path = data_path
-        self.num_files = num_files
+        self.num_files: Union[str, None, int] = num_files
+
+        # not static
+        self.total_files = None
         self.compression_type: str = compression_type
         self.save_path = save_path
 
@@ -68,9 +70,18 @@ class DataGenerator:
 
         if rank == 0:
             df = self._load_data()
-            params = distribution.get_params(
-                df, self.num_files, cr_type=self.compression_type
-            )
+            if isinstance(self.num_files, int):
+
+                params = distribution.get_params(
+                    df, self.num_files, cr_type=self.compression_type
+                )
+                num_rows = min(self.num_files, len(df))
+            else:
+
+                params = distribution.get_params(
+                    df, len(df), cr_type=self.compression_type
+                )
+                num_rows = len(df)
             crs = params[self.cr_name].astype(np.float32)
             xdims = params["dimensions"].astype(np.uint32)
 
@@ -79,17 +90,19 @@ class DataGenerator:
             params = None
             crs = None
             xdims = None
+            num_rows = None
 
+        self.total_rows = comm.bcast(num_rows, root=0)
         crs = comm.bcast(crs, root=0)
         xdims = comm.bcast(xdims, root=0)
 
-        num_rows = self.num_files
+        num_rows = self.total_rows
         rows_per_process = num_rows // size
         start = rank * rows_per_process
         end = start + rows_per_process if rank != size - 1 else num_rows
 
         results: List[Dict[str, Any]] = []
-        for i in range(self.num_files)[start:end]:
+        for i in range(self.total_rows)[start:end]:
 
             xside = xdims[i]
             ocratio = crs[i]
